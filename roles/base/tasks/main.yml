@@ -1,0 +1,89 @@
+# APT packages
+- name: Install apt-packages
+  apt: 
+    name:
+      # General and docker prerequisits
+      - wget
+      - curl
+      - git
+      - nfs-common
+      - gnupg
+      - nginx
+      - default-jdk  # For keytool command in LDAP certificate management
+  become: yes
+
+- name: Create local test data directory
+  file:
+    path: /mnt/omero_data
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Set OMERO data directory ownership
+  file:
+    path: /mnt/omero_data
+    state: directory
+    owner: "{{ omero_uid }}"
+    group: root
+    mode: '0750'
+    recurse: yes
+  become: yes
+
+# Clone or pull the omero-deployment-kit repo
+- name: Clone omero-deployment-kit repository
+  git:
+    repo: "{{ deployment_repo }}"
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit"
+    version: "{{ deployment_branch }}"
+    force: yes
+
+- name: Create database directory
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/database"
+    state: directory
+    owner: "{{ postgres_init_uid }}"
+    group: "{{ postgres_init_gid }}"
+    mode: '0700'
+  become: yes
+
+- name: Deploy OMERO nginx configuration
+  template:
+    src: omero.conf.j2
+    dest: /etc/nginx/sites-available/omero
+    mode: '0644'
+    owner: root
+    group: root
+  become: yes
+  notify: restart nginx
+
+- name: Enable OMERO nginx site
+  file:
+    src: /etc/nginx/sites-available/omero
+    dest: /etc/nginx/sites-enabled/omero
+    state: link
+  become: yes
+  notify: restart nginx
+
+- name: Disable default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: yes
+  notify: restart nginx
+
+- name: Create OMERO static files directory
+  file:
+    path: /var/www/omero-static
+    state: directory
+    owner: "{{ omero_web_uid }}"
+    group: www-data
+    mode: '0755'
+  become: yes
+
+- name: Start and enable nginx service
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+  become: yes
+  

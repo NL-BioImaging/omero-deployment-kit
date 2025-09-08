@@ -1,0 +1,24 @@
+# ome openmicroscopy/omero-server:5 is configured like this:
+
+#   bash-5.1$ id
+#   uid=1000(omero-server) gid=994(omero-server) groups=994(omero-server)
+#
+# Unfortunately this is typically the uid of the first user created on
+# the underlying system, who is normally a member of sudo group.
+# This dockerfile mitigates these issues and aligns with good-practice principles.
+# Importantly, please make sure that this uid matches the ownership of your datastore files.
+
+FROM openmicroscopy/omero-server:5
+
+# Change omero-server user to configurable UID, keep original group
+USER root
+RUN usermod -u {{ omero_uid }} omero-server && \
+    find /opt/omero /OMERO -user 1000 -exec chown {{ omero_uid }} {} +
+
+# install omero-figure and dependencies for export scripts
+RUN /opt/omero/server/venv3/bin/pip install omero-figure reportlab markdown && \
+    cp /opt/omero/server/venv3/lib/python3.9/site-packages/omero_figure/scripts/omero/figure_scripts/Figure_To_Pdf.py $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py && \
+    chown {{ omero_uid }}:omero-server $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py && \
+    chmod 644 $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py
+
+USER omero-server

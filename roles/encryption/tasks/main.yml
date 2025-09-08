@@ -1,0 +1,133 @@
+# Generate self-signed certificate for localhost testing
+- name: Create self-signed certificate for localhost
+  command: openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/omero.key -out /etc/ssl/certs/omero.pem -subj "/C=US/ST=Test/L=Test/O=Test/OU=Test/CN=localhost"
+  args:
+    creates: /etc/ssl/certs/omero.pem
+  become: yes
+
+- name: Set certificate permissions
+  file:
+    path: /etc/ssl/certs/omero.pem
+    mode: '644'
+    owner: root
+    group: root
+  become: yes
+
+- name: Set private key permissions
+  file:
+    path: /etc/ssl/private/omero.key
+    mode: '600'
+    owner: root
+    group: root
+  become: yes
+
+
+# Glacier2 (non-web connections, eg omero-insight and APIs) require p12
+- name: Ensure OMERO SSL directory exists
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero"
+    state: directory
+    mode: '0755'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+
+# Create the p12 and place in 
+- name: Create PKCS#12 bundle for omero-server 
+  shell: |
+    openssl pkcs12 -export \
+      -in /etc/ssl/certs/omero.pem \
+      -inkey /etc/ssl/private/omero.key \
+      -out "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12" \
+      -name "omero-server" \
+      -passout pass:"{{ vault_IceSSL_Password }}"
+  args:
+    creates: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12"
+  become: yes
+
+- name: Set PKCS#12 bundle permissions
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12"
+    mode: '0600'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+
+- name: Copy certificate for OMERO server
+  copy:
+    src: /etc/ssl/certs/omero.pem
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.pem"
+    mode: '0644'
+    owner: "{{ omero_uid }}"
+    group: root
+    remote_src: yes
+  become: yes
+
+- name: Copy private key for OMERO server
+  copy:
+    src: /etc/ssl/private/omero.key
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.key"
+    mode: '0600'
+    owner: "{{ omero_uid }}"
+    group: root
+    remote_src: yes
+  become: yes
+
+# LDAP Certificate Trust Store
+- name: Ensure LDAP certificate directory exists
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs"
+    state: directory
+    mode: '0755'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+
+- name: Fetch LDAP certificates from domain controllers
+  shell: |
+    openssl s_client -connect "{{ item.host }}:{{ item.port }}" -prexit < /dev/null | \
+    openssl x509 -outform PEM > "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs/{{ item.alias }}.pem"
+  loop: "{{ vault_domain_controllers }}"
+  ignore_errors: yes  # Continue if some DCs are unreachable
+  become: yes
+
+- name: Set correct permissions on LDAP certificates
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs/{{ item.alias }}.pem"
+    owner: "{{ omero_uid }}"
+    group: root
+    mode: '0644'
+  become: yes
+  loop: "{{ vault_domain_controllers }}"
+
+- name: Create Java truststore
+  java_cert:
+    cert_path: "/etc/ssl/certs/omero.pem"
+    keystore_path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/.mykeystore"
+    keystore_pass: "{{ vault_trustStorePassword }}"
+    keystore_create: yes
+    state: present
+    cert_alias: "ssl_cert"
+  become: yes
+
+- name: Add LDAP certificates to truststore
+  java_cert:
+    cert_path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs/{{ item.alias }}.pem"
+    keystore_path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/.mykeystore"
+    keystore_pass: "{{ vault_trustStorePassword }}"
+    state: present
+    cert_alias: "{{ item.alias }}"
+  loop: "{{ vault_domain_controllers }}"
+  ignore_errors: yes  # Skip certificates that failed to download
+  become: yes
+
+- name: Set truststore permissions
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/.mykeystore"
+    mode: '0644'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+
+
+

@@ -1,0 +1,36 @@
+# Database
+vault_postgres_password: "insertStrongPassword"
+
+# Omero-root
+vault_omero_root_password: "insertStrongPassword"
+
+# SSL
+vault_IceSSL_Password: "insertStrongPassword"
+vault_trustStorePassword: "insertStrongPassword"
+vault_p12_password: "insertStrongPassword"
+
+# Storage paths
+vault_NFS_fullpath: "fullpath"
+
+# Pathviewer repository URL for licensed software
+vault_pathviewer_repo_url: "https://username:password@repo.glencoesoftware.com/repository/pathviewer-group/simple"
+
+# LDAP
+## LDAP Domain Controllers for certificate fetching
+vault_domain_controllers:
+  - host: "ldap.domain.nl"
+    port: 636
+    alias: "ldap_domain"
+  - host: "dc01.domain.nl"
+    port: 636
+    alias: "dc01"
+  - host: "dc02.domain.nl"
+    port: 636
+    alias: "dc02"
+
+## LDAP variables for server_config.Omero
+vault_ldap_base: "ldap_base"
+vault_ldap_urls: "ldap_urls"
+vault_ldap_username: "ldap_username"
+vault_ldap_password: "insertStrongPassword"
+vault_ldap_filter: "(memberOf=CN=omeroAccess,OU=faculty,DC=domain,DC=nl)"

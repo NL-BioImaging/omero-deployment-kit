@@ -1,0 +1,13 @@
+FROM openmicroscopy/omero-web-standalone:5
+
+USER omero-web
+
+# Create static directory with correct ownership
+RUN mkdir -p /opt/omero/web/OMERO.web/var/static && \
+    chown -R omero-web:omero-web /opt/omero/web/OMERO.web/var/static
+
+# Collect static files for new apps
+RUN source /opt/omero/web/venv3/bin/activate && \
+    omero web syncmedia
+
+# ENTRYPOINT is inherited from parent image

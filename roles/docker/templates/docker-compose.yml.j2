@@ -1,0 +1,60 @@
+services:
+
+  database:
+    image: "postgres:16"
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: omero_psql_user
+      POSTGRES_DB: omero_database
+      POSTGRES_PASSWORD: "{{ vault_postgres_password }}"
+      POSTGRES_HOST_AUTH_METHOD: trust
+    networks:
+      - omero
+    volumes:
+      - "../database:/var/lib/postgresql/data"
+
+  omeroserver:
+    build:
+      context: .
+      dockerfile: Dockerfile-server
+    restart: unless-stopped
+    environment:
+      CONFIG_omero_db_host: database
+      CONFIG_omero_db_user: omero_psql_user
+      CONFIG_omero_db_pass: "{{ vault_postgres_password }}"
+      CONFIG_omero_db_name: omero_database
+      ROOTPASS: "{{ vault_omero_root_password }}"
+    networks:
+      - omero
+    ports:
+      - "127.0.0.1:4064:4064"  # OMERO.insight SSL client access
+    volumes:
+      - "/mnt/omero_data:/OMERO"
+      - "./server_conf.omero:/opt/omero/server/config/server_conf.omero"
+      - "../ssl/omero:/etc/ssl/omero:ro" 
+    ulimits:
+      nofile:
+        soft: 8192
+        hard: 65536
+    depends_on:
+      - database
+
+  omeroweb:
+    build:
+      context: .
+      dockerfile: Dockerfile-web
+    restart: unless-stopped
+    environment:
+      OMEROHOST: omeroserver
+    networks:
+      - omero
+    ports:
+      - "127.0.0.1:4080:4080"  # Web interface for nginx proxy
+    volumes:
+      - "./web_conf.omero:/opt/omero/web/config/web_conf.omero"
+      - "/var/www/omero-static:/opt/omero/web/OMERO.web/var/static"
+    depends_on:
+      - omeroserver
+
+networks:
+  omero:

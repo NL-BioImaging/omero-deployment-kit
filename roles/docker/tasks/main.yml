@@ -1,0 +1,104 @@
+
+- name: Add Docker GPG apt key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  become: yes
+
+- name: Add Docker repo
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable
+    state: present
+  become: yes
+ 
+- name: Install or update docker from Docker repo
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin 
+      - docker-compose-plugin
+    state: latest
+  become: yes
+  notify: restart docker
+
+- name: Create Docker group
+  group:
+    name: docker
+    state: present
+  become: yes
+
+- name: Add users to Docker group  
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+    state: present
+  with_items:
+    - "{{ ansible_user }}"
+  become: yes
+  notify: restart docker
+
+# Force fresh SSH connection to pick up new group membership
+# https://stackoverflow.com/questions/26677064/create-and-use-group-without-restart
+- name: Reset SSH connection for group refresh
+  local_action:
+    module: file
+    path: "~/.ansible/cp"
+    state: absent
+
+- name: Create docker directory
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+
+- name: Deploy custom OMERO web Dockerfile
+  template:
+    src: Dockerfile-web.j2
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/docker/Dockerfile-web"
+    mode: '0644'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  notify: restart omero containers
+  no_log: true # disable logs to prevent logging of credentials in password protected repo for Pathview.
+
+- name: Deploy custom OMERO server Dockerfile
+  template:
+    src: Dockerfile-server.j2
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/docker/Dockerfile-server"
+    mode: '0644'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  notify: restart omero containers
+
+- name: Deploy OMERO server configuration
+  template:
+    src: server_conf.omero.j2
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/docker/server_conf.omero"
+    mode: '0644'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  notify: restart omero containers
+
+- name: Deploy OMERO web configuration
+  template:
+    src: web_conf.omero.j2
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/docker/web_conf.omero"
+    mode: '0644'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  notify: restart omero containers
+
+- name: Deploy docker-compose configuration
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/docker/docker-compose.yml"
+    mode: '0644'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  notify: restart omero containers
+

@@ -1,0 +1,10 @@
+/logs
+database/
+.*
+!.gitignore
+/ssl/*
+!/ssl/omero.pem
+!/ssl/README.md
+/backups/*
+!/backups/README.md
+docker/docker-compose.yml

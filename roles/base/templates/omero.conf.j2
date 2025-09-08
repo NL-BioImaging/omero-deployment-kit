@@ -1,0 +1,50 @@
+server {
+    listen 80;
+    server_name {{ server_name }};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name {{ server_name }};
+    server_tokens off;
+
+    ssl_certificate /etc/ssl/certs/omero.pem;
+    ssl_certificate_key /etc/ssl/private/omero.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_timeout 50m;
+
+    # Serve static files directly  
+    location /static/ {
+        alias /var/www/omero-static/;
+        expires 1d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Fix broken fpbioimage plugin URL
+    location /webclient/omero_fpbioimage_index {
+        if ($args ~ image=([0-9]+)) {
+            set $image_id $1;
+            return 302 /fpbioimage/viewer/$image_id/;
+        }
+        return 404;
+    }
+
+    # Proxy dynamic requests to OMERO web
+    location / {
+        try_files $uri @proxy_to_omero;
+    }
+
+    location @proxy_to_omero {
+        proxy_pass http://localhost:4080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+    }
+}

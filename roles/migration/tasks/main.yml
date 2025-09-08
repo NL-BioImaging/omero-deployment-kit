@@ -1,0 +1,52 @@
+- name: Check if database dump file exists
+  stat:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/backups/restore_omero_from_dump.sql"
+  register: dump_file
+
+- name: Stop containers for database restore
+  command: docker compose down
+  args:
+    chdir: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
+  when: dump_file.stat.exists
+
+- name: Start database container only
+  command: docker compose up -d database
+  args:
+    chdir: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
+  when: dump_file.stat.exists
+
+- name: Wait for database to be ready
+  shell: |
+    docker exec docker-database-1 pg_isready -U omero_psql_user
+  register: db_ready
+  until: db_ready.rc == 0
+  retries: 30
+  delay: 2
+  when: dump_file.stat.exists
+
+- name: Copy dump file to database container
+  shell: |
+    docker cp "{{ ansible_user_dir }}/omero-deployment-kit/backups/restore_omero_from_dump.sql" docker-database-1:/tmp/restore_omero_from_dump.sql
+  when: dump_file.stat.exists
+
+- name: Create fresh database for restore
+  shell: |
+    docker exec docker-database-1 psql -U omero_psql_user -d postgres -c "CREATE DATABASE omero_database;"
+  when: dump_file.stat.exists
+  ignore_errors: yes  # Database might already exist
+
+- name: Restore database from dump
+  shell: |
+    docker exec docker-database-1 pg_restore -U omero_psql_user -d omero_database --clean --if-exists /tmp/restore_omero_from_dump.sql
+  when: dump_file.stat.exists
+
+- name: Clean up temporary dump file in container
+  shell: |
+    docker exec docker-database-1 rm /tmp/restore_omero_from_dump.sql
+  when: dump_file.stat.exists
+
+- name: Rename processed dump file
+  command: mv restore_omero_from_dump.sql omero_dump.sql.processed
+  args:
+    chdir: "{{ ansible_user_dir }}/omero-deployment-kit/backups"
+  when: dump_file.stat.exists
