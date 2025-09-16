@@ -34,7 +34,8 @@ services:
     volumes:
       - "/mnt/omero_data:/OMERO"
       - "./server_conf.omero:/opt/omero/server/config/server_conf.omero"
-      - "../ssl/omero:/etc/ssl/omero:ro" 
+      - "../ssl/omero:/etc/ssl/omero:ro"
+      - "../user_scripts:/opt/omero/server/OMERO.server/lib/scripts/omero/user_scripts:ro"
     ulimits:
       nofile:
         soft: 8192
