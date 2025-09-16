@@ -1,0 +1,21 @@
+FROM openmicroscopy/omero-web-standalone:5
+
+# Install additional OMERO web applications
+## pathviewer
+USER root
+RUN source /opt/omero/web/venv3/bin/activate && \
+    pip install \
+        --index-url {{ vault_pathviewer_repo_url }} \
+        --trusted-host repo.glencoesoftware.com \
+        pathviewer==3.13.3
+USER omero-web
+
+# Create static directory with correct ownership
+RUN mkdir -p /opt/omero/web/OMERO.web/var/static && \
+    chown -R omero-web:omero-web /opt/omero/web/OMERO.web/var/static
+
+# Collect static files for new apps
+RUN source /opt/omero/web/venv3/bin/activate && \
+    omero web syncmedia
+
+# ENTRYPOINT is inherited from parent image

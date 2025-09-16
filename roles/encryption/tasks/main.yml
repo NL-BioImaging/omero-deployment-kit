@@ -1,0 +1,199 @@
+# Production certificate workflow - generate private key if not present
+- name: Generate private key
+  openssl_privatekey:
+    path: /etc/ssl/private/omero.key
+    size: 2048
+    type: RSA
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+
+# Generate Certificate Signing Request from private key
+- name: Generate Certificate Signing Request (CSR) 
+  openssl_csr:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero.csr"
+    privatekey_path: /etc/ssl/private/omero.key
+    country_name: NL
+    state_or_province_name: Limburg
+    locality_name: Maastricht
+    organization_name: Maastricht University
+    organizational_unit_name: Microscopy CORE Lab
+    common_name: "{{ server_name }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  become: yes
+
+# Check for signed certificate and import if present
+- name: Check if signed certificate exists in ssl directory
+  stat:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero.pem"
+  register: signed_cert_file
+
+- name: Stop and disable nginx when no signed certificate is present
+  systemd:
+    name: nginx
+    state: stopped
+    enabled: no
+  become: yes
+  when: not signed_cert_file.stat.exists
+
+- name: Copy signed certificate to system location if present
+  copy:
+    src: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero.pem"
+    dest: /etc/ssl/certs/omero.pem
+    mode: '644'
+    owner: root
+    group: root
+    remote_src: yes
+  become: yes
+  when: signed_cert_file.stat.exists
+
+# Glacier2 (non-web connections, eg omero-insight and APIs) require p12
+- name: Ensure OMERO SSL directory exists
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero"
+    state: directory
+    mode: '0755'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+
+# Create the p12 bundle only if signed certificate exists
+- name: Create PKCS#12 bundle for omero-server 
+  shell: |
+    openssl pkcs12 -export \
+      -in /etc/ssl/certs/omero.pem \
+      -inkey /etc/ssl/private/omero.key \
+      -out "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12" \
+      -name "omero-server" \
+      -passout pass:"{{ vault_IceSSL_Password }}"
+  args:
+    creates: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12"
+  become: yes
+  when: signed_cert_file.stat.exists
+
+- name: Set PKCS#12 bundle permissions
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12"
+    mode: '0600'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+  when: signed_cert_file.stat.exists
+
+- name: Copy certificate for OMERO server
+  copy:
+    src: /etc/ssl/certs/omero.pem
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.pem"
+    mode: '0644'
+    owner: "{{ omero_uid }}"
+    group: root
+    remote_src: yes
+  become: yes
+  when: signed_cert_file.stat.exists
+  
+# LDAP Certificate Trust Store
+- name: Ensure LDAP certificate directory exists
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs"
+    state: directory
+    mode: '0755'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+
+- name: Fetch LDAP certificates from domain controllers
+  shell: |
+    openssl s_client -connect "{{ item.host }}:{{ item.port }}" -prexit < /dev/null | \
+    openssl x509 -outform PEM > "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs/{{ item.alias }}.pem"
+  loop: "{{ vault_domain_controllers }}"
+  ignore_errors: yes  # Continue if some DCs are unreachable
+  become: yes
+
+- name: Set correct permissions on LDAP certificates
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs/{{ item.alias }}.pem"
+    owner: "{{ omero_uid }}"
+    group: root
+    mode: '0644'
+  become: yes
+  loop: "{{ vault_domain_controllers }}"
+
+- name: Create Java truststore
+  java_cert:
+    cert_path: "/etc/ssl/certs/omero.pem"
+    keystore_path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/.mykeystore"
+    keystore_pass: "{{ vault_trustStorePassword }}"
+    keystore_create: yes
+    state: present
+    cert_alias: "ssl_cert"
+  become: yes
+  when: signed_cert_file.stat.exists
+
+- name: Add LDAP certificates to truststore
+  java_cert:
+    cert_path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/ldap-certs/{{ item.alias }}.pem"
+    keystore_path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/.mykeystore"
+    keystore_pass: "{{ vault_trustStorePassword }}"
+    state: present
+    cert_alias: "{{ item.alias }}"
+  loop: "{{ vault_domain_controllers }}"
+  ignore_errors: yes  # Skip certificates that failed to download
+  become: yes
+
+- name: Set truststore permissions
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/.mykeystore"
+    mode: '0644'
+    owner: "{{ omero_uid }}"
+    group: root
+  become: yes
+  when: signed_cert_file.stat.exists
+
+- name: Deploy OMERO nginx configuration
+  template:
+    src: omero.conf.j2
+    dest: /etc/nginx/sites-available/omero
+    mode: '0644'
+    owner: root
+    group: root
+  become: yes
+  notify: restart nginx
+  when: signed_cert_file.stat.exists
+
+- name: Enable OMERO nginx site
+  file:
+    src: /etc/nginx/sites-available/omero
+    dest: /etc/nginx/sites-enabled/omero
+    state: link
+  become: yes
+  notify: restart nginx
+  when: signed_cert_file.stat.exists
+
+- name: Disable default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  become: yes
+  notify: restart nginx
+  when: signed_cert_file.stat.exists
+
+- name: Create OMERO static files directory
+  file:
+    path: /var/www/omero-static
+    state: directory
+    owner: "{{ omero_web_uid }}"
+    group: www-data
+    mode: '0755'
+  become: yes
+  when: signed_cert_file.stat.exists
+
+- name: Start and enable nginx service
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+  become: yes
+  when: signed_cert_file.stat.exists

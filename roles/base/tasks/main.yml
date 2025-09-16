@@ -1,0 +1,68 @@
+# APT packages
+- name: Install apt-packages
+  apt: 
+    name:
+      # General and docker prerequisits
+      - wget
+      - curl
+      - git
+      - nfs-common
+      - gnupg
+      - nginx
+      - default-jdk  # For keytool command in LDAP certificate management
+  become: yes
+
+- name: Mount NFS storage
+  mount:
+    src: "{{ vault_NFS_fullpath }}"
+    path: /mnt/omero_data
+    state: mounted
+    fstype: nfs
+    opts: nfsvers=3,noatime,x-systemd.automount
+  become: yes
+  when: vault_NFS_fullpath is defined and vault_NFS_fullpath != ""
+
+- name: Create data directory if storage is not mounted
+  file:
+    path: /mnt/omero_data
+    state: directory
+    mode: '0755'
+  become: yes
+  when: vault_NFS_fullpath is not defined or vault_NFS_fullpath == ""
+
+- name: Set OMERO data directory ownership
+  file:
+    path: /mnt/omero_data
+    owner: "{{ omero_uid }}"
+    group: root
+    mode: '0750'
+    recurse: yes
+  become: yes
+
+- name: Clone omero-deployment-kit repository
+  git:
+    repo: "{{ deployment_repo }}"
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit"
+    version: "{{ deployment_branch }}"
+    force: yes
+
+- name: Configure system proxy environment
+  copy:
+    dest: "/etc/environment"
+    content: |
+      http_proxy={{ vault_proxy_url }}
+      https_proxy={{ vault_proxy_url }}
+      HTTP_PROXY={{ vault_proxy_url }}
+      HTTPS_PROXY={{ vault_proxy_url }}
+    mode: '0644'
+  become: yes
+
+- name: Create database directory
+  file:
+    path: "{{ ansible_user_dir }}/omero-deployment-kit/database"
+    state: directory
+    owner: "{{ postgres_init_uid }}"
+    group: "{{ postgres_init_gid }}"
+    mode: '0700'
+  become: yes
+ 

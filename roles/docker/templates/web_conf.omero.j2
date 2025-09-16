@@ -1,0 +1,34 @@
+# Ansible managed
+
+# Web applications
+config set omero.web.apps '["omero_figure", "omero_iviewer", "omero_mapr", "omero_parade", "pathviewer", "omero_fpbioimage"]'
+
+# Login customisation
+config set omero.web.login_logo "https://upload.wikimedia.org/wikipedia/commons/4/4c/Maastricht_University_logo_%282017_new_version%29.svg"
+
+# Gunicorn settings
+config set omero.web.wsgi_workers 17
+config set omero.web.wsgi_threads 4
+config set omero.web.application_server.host "0.0.0.0"
+config set omero.web.application_server.port 4080
+
+# CSRF trusted origins
+config set omero.web.csrf_trusted_origins '["https://{{ server_name }}", "https://{{ ansible_host }}"]'
+
+# Pathviewer configuration
+config set omero.web.viewer.view "pathviewer.views.viewer_redirect"
+config set omero.web.pathviewer.option.kinetic_drag true
+config set omero.web.pathviewer.option.hide_shape_labels true
+config set omero.web.pathviewer.option.zoom_at_cursor true
+
+# MAPR configuration
+config set omero.web.mapr.config '[{"menu": "anyvalue", "config": {"default": ["Any Value"], "all": [], "ns": ["openmicroscopy.org/omero/client/mapAnnotation"], "label": "Any"}}]'
+
+# Open with plugins
+config set omero.web.open_with '[["omero_iviewer", "omero_iviewer_index", {"supported_objects": ["images", "dataset", "well"], "script_url": "omero_iviewer/openwith.js", "label": "OMERO.iviewer"}], ["omero_figure", "new_figure", {"supported_objects": ["images"], "target": "_blank", "label": "OMERO.figure"}], ["PathViewer", "/pathviewer", {"supported_objects": ["images"], "script_url": "pathviewer/omeroweb/pathviewer.openwith_viewer.js", "label": "PathViewer"}], ["omero_fpbioimage", "omero_fpbioimage_index", {"supported_objects": ["images"], "label": "FPBioimage Viewer"}]]'
+
+# Center plugins
+config set omero.web.ui.center_plugins '[["Parade", "omero_parade/init.js.html", "omero_parade"]]'
+
+# Top navigation links
+config set omero.web.ui.top_links '[["Figure", "figure_index", {"title": "Open Figure in new tab", "target": "_blank"}], ["Any Value", {"viewname": "maprindex_anyvalue"}, {"title": "Find Any Value"}]]'

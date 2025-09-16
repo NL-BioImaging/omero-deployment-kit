@@ -1,0 +1,9 @@
+- hosts: omero
+  vars_files:
+    - vault.yml
+  roles:
+    - base
+    - docker
+    - encryption
+    - migration 
+    - startup
