@@ -1,3 +1,11 @@
+# Stop any omero-deployment-kit docker containers first
+- name: stop omero containers
+  command: docker compose down
+  args:
+    chdir: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
+  failed_when: false
+  changed_when: false
+
 # APT packages
 - name: Install apt-packages
   apt: 
