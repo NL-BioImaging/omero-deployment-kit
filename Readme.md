@@ -34,6 +34,7 @@ This repository uses a branch-per-institution approach. Each institution should 
 The **maastricht-test branch** is designed for immediate testing with auto-generated self-signed certificates. It can also serve as a minimal version from which to build on.
 
 1. **Request to join the NL-BioImaging GitHub organisation** via Issues or Discussions
+> see *Requesting access...* section below for how to use this kit without write access to the repo
 2. **Clone and use maastricht-test** (default branch):
    ```bash
    git clone https://github.com/NL-BioImaging/omero-deployment-kit
@@ -113,7 +114,7 @@ maastricht-university branch uses this workflow for deployment and renewal of ce
 
 >also see `ssl/README.md` for more information
 
-# Requesting ccess and contributing your Institution's Configuration
+# Requesting access and contributing your Institution's Configuration
 Request write access to the repo via [GitHub Issues](https://github.com/NL-BioImaging/omero-deployment-kit/issues) or [Discussions](https://github.com/orgs/NL-BioImaging/discussions). Other institutions will then be able to use your configuration as a starting point. This collaborative approach helps the entire OMERO community benefit from shared expertise while providing you with a maintainable deployment that stays current with upstream OME releases. If you would like to use the playbook without requesting write access, feel free to fork, but keep in mind that doing so fragments this effort somewhat. If your new repo is private, you can use the following task in your base role and add your server's public key as a deploy key to your repo.
 
 ```yaml
