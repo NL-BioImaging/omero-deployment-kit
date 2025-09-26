@@ -2,3 +2,9 @@
   command: docker compose up -d --build
   args:
     chdir: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
+
+- name: Enable Docker service so containers start after reboot
+  systemd:
+    name: docker
+    enabled: true
+    state: started
