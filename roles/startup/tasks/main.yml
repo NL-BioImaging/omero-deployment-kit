@@ -7,4 +7,4 @@
   systemd:
     name: docker
     enabled: true
-    state: started
+  become: yes
