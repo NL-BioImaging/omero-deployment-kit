@@ -30,7 +30,7 @@ services:
     networks:
       - omero
     ports:
-      - "127.0.0.1:4064:4064"  # OMERO.insight SSL client access
+      - "4064:4064"  # OMERO.insight SSL client access
     volumes:
       - "/mnt/omero_data:/OMERO"
       - "./server_conf.omero:/opt/omero/server/config/server_conf.omero"
