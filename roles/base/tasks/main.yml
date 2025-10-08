@@ -5,6 +5,7 @@
     chdir: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
   failed_when: false
   changed_when: false
+  when: ansible_user_dir + '/omero-deployment-kit/docker' is directory
 
 # APT packages
 - name: Install apt-packages
