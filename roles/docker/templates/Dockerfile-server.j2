@@ -18,7 +18,8 @@ RUN usermod -u {{ omero_uid }} omero-server && \
 # install omero-figure and dependencies for export scripts
 # this is locked to 7.1.0 to match omero-web version, which is required for pathviewer.
 RUN /opt/omero/server/venv3/bin/pip install omero-figure==7.1.0 reportlab markdown && \
-    cp /opt/omero/server/venv3/lib/python3.9/site-packages/omero_figure/scripts/omero/figure_scripts/Figure_To_Pdf.py $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py && \
+    SITE_PACKAGES=$(/opt/omero/server/venv3/bin/python -c "import site; print(site.getsitepackages()[0])") && \
+    cp $SITE_PACKAGES/omero_figure/scripts/omero/figure_scripts/Figure_To_Pdf.py $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py && \
     chown {{ omero_uid }}:omero-server $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py && \
     chmod 644 $OMERODIR/lib/scripts/omero/figure_scripts/Figure_To_Pdf.py
 
