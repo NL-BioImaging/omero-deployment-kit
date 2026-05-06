@@ -11,6 +11,7 @@ services:
     networks:
       - omero
     volumes:
+      - "/etc/localtime:/etc/localtime:ro"
       - "../database:/var/lib/postgresql/data"
 
   omeroserver:
@@ -32,6 +33,7 @@ services:
     ports:
       - "4064:4064"  # OMERO.insight SSL client access
     volumes:
+      - "/etc/localtime:/etc/localtime:ro"
       - "/mnt/omero_data:/OMERO"
       - "./server_conf.omero:/opt/omero/server/config/server_conf.omero"
       - "../ssl/omero:/etc/ssl/omero:ro"
@@ -58,6 +60,7 @@ services:
     ports:
       - "127.0.0.1:4080:4080"  # Web interface for nginx proxy
     volumes:
+      - "/etc/localtime:/etc/localtime:ro"
       - "./web_conf.omero:/opt/omero/web/config/web_conf.omero"
       - "/var/www/omero-static:/opt/omero/web/OMERO.web/var/static"
     depends_on:
