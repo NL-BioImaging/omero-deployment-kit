@@ -130,7 +130,7 @@ Request write access to the repo via [GitHub Issues](https://github.com/NL-BioIm
 >*where [id] is your private key*
 
 # Database Migration (Advanced)
-If you would like to restore the database from an existing OMERO server, place the sql dump here: `backups/restore_omero_from_dump.sql`. This will trigger the migration role when the playbook is ran. See the playbook for implementation details. You will also need to attach existing storage and point to it via the 'vault_NFS_fullpath' variable. Have a look at the "mount HNAS HDS NFS exports" task in the base role; you may need to ammend this task. Only attempt the migration if you know what you are doing. Backup all data and the database (and be sure you can restore it!) before the migration.
+If you would like to restore the database from an existing OMERO server, place the sql dump here: `backups/restore_omero_from_dump.sql`. This will trigger the migration role when the playbook is ran. See the playbook for implementation details. You will also need to attach existing storage and point to it via the 'vault_NFS_fullpath' variable. Have a look at the "mount HNAS HDS NFS exports" task in the base role; you may need to ammend this task. Only attempt the migration if you know what you are doing. Backup all data and the database (and be sure you can restore it!) before the migration. Please note that the `vault_omero_root_password` ENV variable is only applied on initialisation of a new database. This means that if you migrate from an existing database, the root user password remains unchanged.
 
 # Prerequisites
 - Ubuntu/Debian server with SSH access
