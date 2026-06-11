@@ -18,7 +18,7 @@
       - nfs-common
       - gnupg
       - nginx
-      - default-jdk  # For keytool command in LDAP certificate management
+      - default-jdk # For keytool command in LDAP certificate management
   become: yes
 
 - name: Mount NFS storage
@@ -35,7 +35,7 @@
   file:
     path: /mnt/omero_data
     state: directory
-    mode: '0755'
+    mode: "0755"
   become: yes
   when: vault_NFS_fullpath is not defined or vault_NFS_fullpath == ""
 
@@ -63,7 +63,7 @@
       https_proxy={{ vault_proxy_url }}
       HTTP_PROXY={{ vault_proxy_url }}
       HTTPS_PROXY={{ vault_proxy_url }}
-    mode: '0644'
+    mode: "0644"
   become: yes
 
 - name: Create database directory
@@ -72,6 +72,6 @@
     state: directory
     owner: "{{ postgres_init_uid }}"
     group: "{{ postgres_init_gid }}"
-    mode: '0700'
+    mode: "0700"
   become: yes
  
