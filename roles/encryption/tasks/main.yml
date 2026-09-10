@@ -78,8 +78,6 @@
       -out "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12" \
       -name "omero-server" \
       -passout pass:"{{ vault_IceSSL_Password }}"
-  args:
-    creates: "{{ ansible_user_dir }}/omero-deployment-kit/ssl/omero/omero.p12"
   become: yes
   when: signed_cert_file.stat.exists
 
