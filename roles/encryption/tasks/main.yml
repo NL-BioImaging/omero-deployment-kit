@@ -1,3 +1,11 @@
+# Sync repo so committed certs and config are present before processing
+- name: Sync omero-deployment-kit repository
+  git:
+    repo: "{{ deployment_repo }}"
+    dest: "{{ ansible_user_dir }}/omero-deployment-kit"
+    version: "{{ deployment_branch }}"
+    force: yes
+
 # Production certificate workflow - generate private key if not present
 - name: Generate private key
   openssl_privatekey:
