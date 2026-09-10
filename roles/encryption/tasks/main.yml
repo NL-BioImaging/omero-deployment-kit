@@ -49,6 +49,7 @@
     remote_src: yes
   become: yes
   when: signed_cert_file.stat.exists
+  notify: restart nginx
 
 # Glacier2 (non-web connections, eg omero-insight and APIs) require p12
 - name: Ensure OMERO SSL directory exists

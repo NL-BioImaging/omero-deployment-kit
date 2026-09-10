@@ -4,6 +4,7 @@
   roles:
     - base
     - docker
-    - encryption
-    - migration 
+    - role: encryption
+      tags: encryption
+    - migration
     - startup
