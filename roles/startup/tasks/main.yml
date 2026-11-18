@@ -3,6 +3,10 @@
   args:
     chdir: "{{ ansible_user_dir }}/omero-deployment-kit/docker"
 
+- name: Prune dangling Docker volumes left behind by the rebuild
+  command: docker volume prune -f
+  changed_when: false
+
 - name: Enable Docker service so containers start after reboot
   systemd:
     name: docker
