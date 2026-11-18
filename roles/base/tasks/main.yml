@@ -66,6 +66,17 @@
           or omero_data_stat.stat.mode != '0750'
   become: yes
 
+# If a user runs a batch export, the tmp directory can get extremely large
+# Move it off the OS disk and mounting as a volume to prevent the server from crashing!
+- name: Create OMERO tmp directory on NFS data volume
+  file:
+    path: /mnt/omero_data/omero_tmp
+    state: directory
+    owner: "{{ omero_uid }}"
+    group: root
+    mode: "0750"
+  become: yes
+
 - name: Clone omero-deployment-kit repository
   git:
     repo: "{{ deployment_repo }}"

@@ -35,6 +35,7 @@ services:
     volumes:
       - "/etc/localtime:/etc/localtime:ro"
       - "/mnt/omero_data:/OMERO"
+      - "/mnt/omero_data/omero_tmp:/opt/omero/server/omero/tmp"
       - "./server_conf.omero:/opt/omero/server/config/server_conf.omero"
       - "../ssl/omero:/etc/ssl/omero:ro"
       - "../user_scripts:/opt/omero/server/OMERO.server/lib/scripts/omero/user_scripts:ro"
