@@ -9,7 +9,7 @@
 
 # APT packages
 - name: Install apt-packages
-  apt: 
+  apt:
     name:
       # General and docker prerequisits
       - wget
@@ -39,13 +39,31 @@
   become: yes
   when: vault_NFS_fullpath is not defined or vault_NFS_fullpath == ""
 
-- name: Set OMERO data directory ownership
-  file:
-    path: /mnt/omero_data
-    owner: "{{ omero_uid }}"
-    group: root
-    mode: '0750'
-    recurse: yes
+
+# The following block is intended to correct the ownership of an existing datastore
+# from, for example, a prior deployment. The stat condition is here to skip a recursive 
+#  permissions check, which would otherwise run every time the playbook runs (very slow!).
+# Take care... if your top level permissions are correct this block will be skipped,
+# even if the permissions and ownership of files within the directories below it are incorrect.
+- name: Ensure OMERO data directory ownership is correct
+  block:
+    - name: Check ownership of OMERO data directory
+      stat:
+        path: /mnt/omero_data
+      register: omero_data_stat
+
+    - name: Set OMERO data directory ownership (recurses only on mismatch)
+      file:
+        path: /mnt/omero_data
+        owner: "{{ omero_uid }}"
+        group: root
+        mode: '0750'
+        recurse: yes
+      when:
+        - omero_data_stat.stat.exists
+        - omero_data_stat.stat.uid != (omero_uid | int)
+          or omero_data_stat.stat.gid != 0
+          or omero_data_stat.stat.mode != '0750'
   become: yes
 
 - name: Clone omero-deployment-kit repository
@@ -74,4 +92,3 @@
     group: "{{ postgres_init_gid }}"
     mode: "0700"
   become: yes
- 
